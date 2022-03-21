@@ -1,0 +1,44 @@
+/************************/
+/**** BASIC SETTINGS ****/
+/************************/
+
+// WIFI
+
+const char *ssid = "ssid";
+const char *password = "pass";
+const char *hostname = "clock-small.lan";
+
+//// Clock
+uint8_t clockColorMode = 1;                        // 0 => SOLID, 1 => PALETTE, (2 => STATIC_PALETTE - To-Do)
+CRGB clockColorSolid = CRGB::Green;                // SOLID mode only: All available predefined colors: https://github.com/FastLED/FastLED/wiki/Pixel-reference#predefined-colors-list
+CRGBPalette16 clockColorPalette = RainbowColors_p; // PALETTE mode only: Predefined palette to use (RainbowColors_p, CloudColors_p, LavaColors_p, OceanColors_p, ForestColors_p)
+uint8_t clockColorCharBlend = 5;                   // PALETTE mode only: Blend single characters by amount n (0-255) | 0 => disabled, >0 amount of change
+TBlendType clockColorBlending = LINEARBLEND;       // PALETTE mode only: options are LINEARBLEND or NOBLEND - linear is 'cleaner'
+uint8_t clockSecIndicatorDiff = 32;                // How much to darken down the second indicator when toggling (0-255) | 0 => Disabled
+
+//// Open Weather Map (EXPERIMENTAL)
+String owmApiServer = "api.openweathermap.org";        // FQDN of API server (normally no need to change it)
+String owmApiKey = "<YOUR API KEY>"; // You OWA API key. Get a free one from https://openweathermap.org/price
+String owmLocation = "<Your city,Country code>";                    // The location to get weather data from. API docs: https://openweathermap.org/current#name
+String owmUnits = "metric";                            // "metric" or "imperial" | If switched to imperial, also chnage the owmTempMin/Max values below in the advanced section (values are limited to two digits, so f.ex. 99°F (~ 37°C) is the maximum possible to show
+// OWM Temperature (EXPERIMENTAL)
+uint8_t owmTempEnabled = 1;     // Show temperature | 0 => No, 1 => Yes
+uint8_t owmTempDisplayTime = 5; // Show temperature for n seconds
+
+//// FastLED
+uint8_t ledBrightness = 78; // Maximum brightness (0-255)
+
+//// Open Weather Map (EXPERIMENTAL)
+int8_t owmTempMin = -40;                // Min temperature (-99 is min possibl. Value and lower temperature will be shown in blue and fades torwards red if warmer)
+int8_t owmTempMax = 50;                 // Max temperature (99 is max possible. Value and higher temperature will be shown in red and fades torwards blue if colder)
+char *owmTempSchedule = "30 * * * * *"; // When should the temperature be shown in "extended" cron format (see below)
+
+//// FastLED
+#define LED_PIN D3 // LED data pin to use on ESP
+
+//// Schedules
+// The schedules use an "extended" cron syntax with an addiational seconds field
+// <sec> <min> <hour> <day> <month> <day of week>
+// Cron docs: https://en.wikipedia.org/wiki/Cron#Overview
+char *clockUpdateSchedule = "* * * * * *"; // When to update clock. Default: Every second (SHOULD NOT be changed)
+char *owmUpdateSchedule = "0 5 * * * *";   // When to update weather data. Default: 5 past every hour (the free OWM only updaes once every full hour)
