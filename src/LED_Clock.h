@@ -1,39 +1,10 @@
-/* 
- * This file is part of the 7 Segment LED Clock Project 
- * (https://www.prusaprinters.org/prints/68013-7-segment-led-clock).
- * 
- * Copyright (c) 2021 Urs Weiss.
- * 
- * This program is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU General Public License as published by  
- * the Free Software Foundation, version 3.
- *
- * This program is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License 
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#ifndef LED_Clock
-#define LED_Clock
-
-#include <WiFiClient.h>
-
+#include <WifiClient.h>
 #include "FastLED_RGBW.h"
-
-// WiFi
-WiFiClient client;
 
 // FastLED
 #define COLOR_ORDER GRB
 CRGBW leds[NUM_LEDS];
 CRGB *ledsRGB = (CRGB *)&leds[0];
-const uint8_t totalCharacters = 4; // w/o the colons
-const uint8_t segmentsPerCharacter = 7;
-const uint8_t ledsPerSegment = 2;
 CRGBPalette16 currentPalette;
 TBlendType currentBlending;
 CRGB currentColor;
@@ -41,6 +12,7 @@ CRGB currentDarkColor;
 uint8_t colorIndex = 0;
 uint8_t charBlendIndex;
 uint8_t darkBrightness = 0;
+uint8_t currentBrightness = ledBrightness;
 
 // Open Weather Map
 int8_t owmTemperature = -128; // DON'T change
@@ -207,8 +179,8 @@ void toggleSecondIndicator()
     CRGB tmpColor;
     CRGB tmpDarkColor;
 
-    darkBrightness = ledBrightness - clockSecIndicatorDiff;
-    if (darkBrightness > ledBrightness)
+    darkBrightness = currentBrightness - clockSecIndicatorDiff;
+    if (darkBrightness > currentBrightness)
     {
         darkBrightness = 0;
     }
@@ -226,7 +198,7 @@ void toggleSecondIndicator()
         // Correct the color to match blend (a bit of a hack...)
         colorCorrection = 2 * clockColorCharBlend;
 
-        tmpColor = ColorFromPalette(currentPalette, (colorIndex + colorCorrection), ledBrightness, currentBlending);
+        tmpColor = ColorFromPalette(currentPalette, (colorIndex + colorCorrection), currentBrightness, currentBlending);
         tmpDarkColor = ColorFromPalette(currentPalette, (colorIndex + colorCorrection), darkBrightness, currentBlending);
     }
 
@@ -259,7 +231,7 @@ void displayCharacter(uint8_t charNum, uint8_t position, bool customize, CRGBPal
     {
         if (customize)
         {
-            currentColor = ColorFromPalette(customPalette, customBlendIndex, ledBrightness, currentBlending);
+            currentColor = ColorFromPalette(customPalette, customBlendIndex, currentBrightness, currentBlending);
         }
         else
         {
@@ -269,7 +241,7 @@ void displayCharacter(uint8_t charNum, uint8_t position, bool customize, CRGBPal
             }
             else if (clockColorMode == 1)
             { // PALETTE
-                currentColor = ColorFromPalette(currentPalette, charBlendIndex, ledBrightness, currentBlending);
+                currentColor = ColorFromPalette(currentPalette, charBlendIndex, currentBrightness, currentBlending);
             }
         }
 
@@ -318,7 +290,16 @@ void displayTime()
         return;
     }
 
-    currentColor = ColorFromPalette(currentPalette, colorIndex, ledBrightness, currentBlending);
+    if (timeinfo.tm_hour < nightStartHour && timeinfo.tm_hour >= nightEndHour)
+    {
+        currentBrightness = ledBrightness;
+    }
+    else
+    {
+        currentBrightness = nightLedBrightness;
+    }
+
+    currentColor = ColorFromPalette(currentPalette, colorIndex, currentBrightness, currentBlending);
 
     // Split time into single digits
     int hourNibble10 = timeinfo.tm_hour / 10;
@@ -441,6 +422,7 @@ void displayError(uint8_t errorId)
 
 void getWeather()
 {
+    WiFiClient client;
     String line = "";
     Serial.println("getWeather - Starting connection to OWM server");
 
@@ -450,7 +432,7 @@ void getWeather()
 
     if (client.connect(owmApiServerChar, 80))
     {
-        Serial.println("getWeather - Connected");
+       // Serial.println("getWeather - Connected");
         client.print("GET /data/2.5/forecast?");
         client.print("q=" + owmLocation);
         client.print("&appid=" + owmApiKey);
@@ -464,7 +446,7 @@ void getWeather()
     {
         Serial.println("getWeater - Unable to connect");
     }
-
+    Serial.println("connected");
     while (client.connected())
     {
         StaticJsonDocument<5000> jsonBuffer;
@@ -482,5 +464,3 @@ void getWeather()
         owmTemperature = round(owmTemperatureRaw.toFloat());
     }
 }
-
-#endif

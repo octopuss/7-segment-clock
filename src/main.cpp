@@ -1,7 +1,3 @@
-#if !(defined(ESP8266) || defined(ESP32))
-#error This code is intended to run on the ESP8266 or ESP32 platform! Please check your Tools->Board setting.
-#endif
-
 #include <FastLED.h>
 #include <ArduinoJson.h>
 #include <CronAlarms.h>
@@ -9,12 +5,20 @@
 #include "LED_Clock.h"
 #include <ESP8266WiFi.h> //https://github.com/esp8266/Arduino
 #include <ArduinoOTA.h>
-//needed for library
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 
+
+AsyncWebServer server(80);
+DNSServer dns;
+//needed for library
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;  //Replace with your GMT offset (seconds)
 const int daylightOffset_sec = 0; //Replace with your daylight offset
+
+
+
 
 void printLocalTime()
 {
@@ -34,23 +38,29 @@ void setup()
   FastLED.addLeds<LED_TYPE, LED_PIN, RGB>(ledsRGB, getRGBWsize(NUM_LEDS));
   FastLED.setBrightness(ledBrightness);
 
+  AsyncWiFiManager wifiManager(&server, &dns);
+
+  //exit after config instead of connecting
+  wifiManager.setBreakAfterConfig(true);
+
   Serial.begin(115200);
   Serial.println();
   displayMessage(1);
-  WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED)
+  if (!wifiManager.autoConnect("Led-clock"))
   {
-    delay(500);
-    Serial.print(".");
+    Serial.println("failed to connect, we should reset as see if it connects");
+    delay(3000);
+    ESP.reset();
+    delay(5000);
   }
-  Serial.println("");
+
   Serial.println("WiFi connected");
   Serial.println("IP:" + WiFi.localIP().toString());
-  WiFi.hostname(hostname);
+
   displayMessage(3);
 
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  configTime(timezone, ntpServer);
   ArduinoOTA.setHostname(hostname);
 
   ArduinoOTA.onStart([]()
@@ -103,13 +113,15 @@ void setup()
 
   ArduinoOTA.begin();
 
-  //displayMessage(1);
-
   Cron.create(clockUpdateSchedule, displayTime, false);
 
   if (owmTempEnabled == 1)
   {
-    getWeather();
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.println("Wifi Connected");
+      getWeather();
+    }
     Cron.create(owmUpdateSchedule, getWeather, false);
     Cron.create(owmTempSchedule, displayTemperature, false);
   }

@@ -16,21 +16,34 @@ uint8_t clockColorCharBlend = 5;                   // PALETTE mode only: Blend s
 TBlendType clockColorBlending = LINEARBLEND;       // PALETTE mode only: options are LINEARBLEND or NOBLEND - linear is 'cleaner'
 uint8_t clockSecIndicatorDiff = 32;                // How much to darken down the second indicator when toggling (0-255) | 0 => Disabled
 
+const uint8_t ledsPerSegment = 1;
+const uint8_t totalCharacters = 4;                 // w/o the colons
+const uint8_t segmentsPerCharacter = 7;
+const uint8_t NUM_LEDS = (ledsPerSegment * segmentsPerCharacter * totalCharacters  ) + 2;
+
+char *timezone="CET-1CEST,M3.5.0,M10.5.0/3";
+
+uint8_t owmTempEnabled = 1;     // Show temperature | 0 => No, 1 => Yes
+uint8_t owmTempDisplayTime = 5; // Show temperature for n seconds
+
 //// Open Weather Map (EXPERIMENTAL)
 String owmApiServer = "api.openweathermap.org";        // FQDN of API server (normally no need to change it)
 String owmApiKey = "<YOUR API KEY>"; // You OWA API key. Get a free one from https://openweathermap.org/price
 String owmLocation = "<Your city,Country code>";                    // The location to get weather data from. API docs: https://openweathermap.org/current#name
 String owmUnits = "metric";                            // "metric" or "imperial" | If switched to imperial, also chnage the owmTempMin/Max values below in the advanced section (values are limited to two digits, so f.ex. 99°F (~ 37°C) is the maximum possible to show
 // OWM Temperature (EXPERIMENTAL)
-uint8_t owmTempEnabled = 1;     // Show temperature | 0 => No, 1 => Yes
-uint8_t owmTempDisplayTime = 5; // Show temperature for n seconds
+
 
 //// FastLED
-uint8_t ledBrightness = 78; // Maximum brightness (0-255)
+uint8_t ledBrightness = 130; // Maximum brightness (0-255)
+uint8_t nightLedBrightness = 20;
+uint8_t nightStartHour = 21;
+uint8_t nightEndHour = 7;
+
 
 //// Open Weather Map (EXPERIMENTAL)
-int8_t owmTempMin = -40;                // Min temperature (-99 is min possibl. Value and lower temperature will be shown in blue and fades torwards red if warmer)
-int8_t owmTempMax = 50;                 // Max temperature (99 is max possible. Value and higher temperature will be shown in red and fades torwards blue if colder)
+int8_t owmTempMin = -10;                // Min temperature (-99 is min possibl. Value and lower temperature will be shown in blue and fades torwards red if warmer)
+int8_t owmTempMax = 44;                 // Max temperature (99 is max possible. Value and higher temperature will be shown in red and fades torwards blue if colder)
 char *owmTempSchedule = "30 * * * * *"; // When should the temperature be shown in "extended" cron format (see below)
 
 //// FastLED
