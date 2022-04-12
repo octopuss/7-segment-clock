@@ -1,5 +1,7 @@
 #include <WifiClient.h>
 #include "FastLED_RGBW.h"
+//#include <OneWire.h>
+//#include <DS18B20.h>
 
 // FastLED
 #define COLOR_ORDER GRB
@@ -13,6 +15,7 @@ uint8_t colorIndex = 0;
 uint8_t charBlendIndex;
 uint8_t darkBrightness = 0;
 uint8_t currentBrightness = ledBrightness;
+const uint8_t chars = 32;
 
 // Open Weather Map
 int8_t owmTemperature = -128; // DON'T change
@@ -24,6 +27,9 @@ uint8_t color = 0;
 bool clockDisplayPaused = false;
 char displayWord[5];
 struct tm timeinfo;
+
+//OneWire oneWire(D2);
+//DS18B20 sensor(&oneWire);
 
 bool getLocalTime(struct tm *info, uint32_t ms = 5000)
 {
@@ -42,7 +48,7 @@ bool getLocalTime(struct tm *info, uint32_t ms = 5000)
     return false;
 }
 
-const uint8_t ledChar[31][segmentsPerCharacter] = {
+const uint8_t ledChar[chars][segmentsPerCharacter] = {
     {0, 1, 1, 1, 1, 1, 1}, // 0
     {0, 1, 0, 0, 0, 0, 1}, // 1, l, I
     {1, 1, 1, 0, 1, 1, 0}, // 2
@@ -73,7 +79,8 @@ const uint8_t ledChar[31][segmentsPerCharacter] = {
     {0, 0, 0, 0, 1, 1, 1}, // u
     {1, 1, 1, 1, 0, 0, 0}, // °
     {1, 0, 0, 0, 0, 0, 0}, // -
-    {0, 0, 0, 0, 0, 0, 0}  // off (30)
+    {1, 1, 1, 1, 0, 1, 0}, // °internal
+    {0, 0, 0, 0, 0, 0, 0}, // off (30)
 };
 
 // Functions
@@ -151,15 +158,18 @@ int mapChar(char character)
     case 'u':
         return 27;
         break;
-    //case '°':
+    // case '°':
     case 'z': // Workaround as "°" doesn't seem to work
         return 28;
         break;
     case '-':
         return 29;
         break;
-    default:
+    case 'x':
         return 30;
+        break;
+    default:
+        return 31;
         break;
     }
 }
@@ -220,7 +230,7 @@ void secondIndicatorOff()
 
 void displayCharacter(uint8_t charNum, uint8_t position, bool customize, CRGBPalette16 customPalette, uint8_t customBlendIndex)
 {
-    if (charNum > 30)
+    if (charNum > (chars - 1))
     {
         return;
     }
@@ -266,7 +276,7 @@ void display(String word, bool customize = false, CRGBPalette16 customPalette = 
     {
         if (i < leadingBlanks)
         {
-            charNum = 30;
+            charNum = chars - 1;
         }
         else
         {
@@ -309,7 +319,9 @@ void displayTime()
 
     if (hourNibble10 == 0)
     {
+        Serial.println("tady");
         sprintf(displayWord, "%d%d%d", hourNibble, minNibble10, minNibble);
+        Serial.println(displayWord);
     }
     else
     {
@@ -326,55 +338,122 @@ void displayTime()
     }
 }
 
-void displayTemperature()
+
+
+/* float readDSTemperature()
+{
+    if (sensor.begin() == false)
+    {
+        Serial.println("ERROR: No device found");
+        while (!sensor.begin())
+            ; // wait until device comes available.
+    }
+
+    sensor.setResolution(10);
+    sensor.setConfig(DS18B20_CRC); // or 1
+    sensor.requestTemperatures();
+    // wait for data AND detect disconnect
+    uint32_t timeout = millis();
+    while (!sensor.isConversionComplete())
+    {
+        if (millis() - timeout >= 800) // check for timeout
+        {
+            Serial.println("ERROR: timeout or disconnect");
+            break;
+        }
+    }
+
+    return sensor.getTempC();
+} */
+
+int tempSamples[ntcAveragedReadingsCount];
+double readNtcTemperature()
+{
+    uint8_t i;
+    float average;
+
+    // take N samples in a row, with a slight delay
+    for (i = 0; i < ntcAveragedReadingsCount; i++)
+    {
+        tempSamples[i] = analogRead(ntcPin);
+        delay(10);
+    }
+
+    // average all the samples out
+    average = 0;
+    for (i = 0; i < ntcAveragedReadingsCount; i++)
+    {
+        average += tempSamples[i];
+    }
+    average /= ntcAveragedReadingsCount;
+
+    average = 1023 / average - 1;
+    average = ntcSeriesResistor / average;
+    float steinhart;
+    steinhart = average / ntcResistanceNominal;   // (R/Ro)
+    steinhart = log(steinhart);                   // ln(R/Ro)
+    steinhart /= ntcBCoefficient;                 // 1/B * ln(R/Ro)
+    steinhart += 1.0 / (ntcTempNominal + 273.15); // + (1/To)
+    steinhart = 1.0 / steinhart;                  // Invert
+    steinhart -= 273.15;                          // convert absolute temp to C
+    return steinhart + ntcTempCompensation;
+}
+
+void displayTemperature(int temperature, int minTemp, int maxTemp, String units, int displayTime, int8 internal)
 {
     // Skip if we have no temperature yet
-    if (owmTemperature == -128)
+    if (temperature == -128)
     {
         return;
     }
-
     secondIndicatorOff();
     uint8_t customBlendIndex;
 
-    bool negative = owmTemperature < 0;
+    bool negative = temperature < 0;
 
-    if (owmTemperature < owmTempMin)
+    if (temperature < minTemp)
     {
         customBlendIndex = 160;
     }
-    else if (owmTemperature > owmTempMax)
+    else if (temperature > maxTemp)
     {
         customBlendIndex = 0;
     }
     else if (negative)
     {
-        customBlendIndex = map(owmTemperature, owmTempMin, (owmUnits == "metric" ? -1 : 33), 160, 127);
+        customBlendIndex = map(temperature, minTemp, (units == "metric" ? -1 : 33), 160, 127);
     }
     else
     {
-        customBlendIndex = map(owmTemperature, (owmUnits == "metric" ? 0 : 32), owmTempMax, 126, 0);
+        customBlendIndex = map(temperature, (units == "metric" ? 0 : 32), maxTemp, 126, 0);
     }
 
-    if (negative)
-    {
-        owmTemperature *= -1;
-    }
-
-    int tempNibble10 = owmTemperature / 10;
-    int tempNibble = owmTemperature % 10;
-
-    sprintf(displayWord, "%d%d%c%c", tempNibble10, tempNibble, 'z', (owmUnits == "metric" ? 'C' : 'F'));
+    int tempNibble10 = temperature / 10;
+    int tempNibble = temperature % 10;
+    char unit = internal == 1 ? 'x' : 'z';
+    sprintf(displayWord, "%d%d%c%c", tempNibble10, tempNibble, unit, (units == "metric" ? 'C' : 'F'));
     display(displayWord, true, RainbowColors_p, customBlendIndex);
-
     FastLED.show();
-    Cron.delay(owmTempDisplayTime * 1000);
+    Cron.delay(displayTime * 1000);
+}
+
+void displayNtcTemperature()
+{
+    double temp = readNtcTemperature();
+    Serial.println(temp);
+    displayTemperature(floor(temp), ntcTempMin, ntcTempMax, ntcUnits, ntcTempDisplayTime, 1);
+}
+
+void displayWeather()
+{
+    displayTemperature(owmTemperature, owmTempMin, owmTempMax, owmUnits, owmTempDisplayTime, 0);
 }
 
 void displayMessage(uint8_t messageId)
 {
     String serialMessage;
     String displayMessage;
+    secondIndicatorOff();
 
     switch (messageId)
     {
@@ -389,6 +468,11 @@ void displayMessage(uint8_t messageId)
     case 3:
         serialMessage = "Connecting to WiFi";
         displayMessage = "Conn";
+        break;
+
+    case 4:
+        serialMessage = "Clearing";
+        displayMessage = "XXXX";
         break;
     }
 
@@ -420,6 +504,17 @@ void displayError(uint8_t errorId)
     Cron.delay(3000);
 }
 
+void displayIp(IPAddress ip)
+{
+    secondIndicatorOff();
+    for (int i = 0; i < 4; i++)
+    {
+        sprintf(displayWord, "%d", ip[i]);
+        display(displayWord);
+        delay(1000);
+    }
+}
+
 void getWeather()
 {
     WiFiClient client;
@@ -432,7 +527,7 @@ void getWeather()
 
     if (client.connect(owmApiServerChar, 80))
     {
-       // Serial.println("getWeather - Connected");
+        // Serial.println("getWeather - Connected");
         client.print("GET /data/2.5/forecast?");
         client.print("q=" + owmLocation);
         client.print("&appid=" + owmApiKey);

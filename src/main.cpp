@@ -8,17 +8,15 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>
 
-
 AsyncWebServer server(80);
 DNSServer dns;
-//needed for library
+// needed for library
 
 const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600;  //Replace with your GMT offset (seconds)
-const int daylightOffset_sec = 0; //Replace with your daylight offset
+const long gmtOffset_sec = 3600;  // Replace with your GMT offset (seconds)
+const int daylightOffset_sec = 0; // Replace with your daylight offset
 
-
-
+AsyncWiFiManager wifiManager(&server, &dns);
 
 void printLocalTime()
 {
@@ -38,9 +36,7 @@ void setup()
   FastLED.addLeds<LED_TYPE, LED_PIN, RGB>(ledsRGB, getRGBWsize(NUM_LEDS));
   FastLED.setBrightness(ledBrightness);
 
-  AsyncWiFiManager wifiManager(&server, &dns);
-
-  //exit after config instead of connecting
+  // exit after config instead of connecting
   wifiManager.setBreakAfterConfig(true);
 
   Serial.begin(115200);
@@ -55,10 +51,13 @@ void setup()
     delay(5000);
   }
 
+  
+  IPAddress ip = WiFi.localIP();
   Serial.println("WiFi connected");
-  Serial.println("IP:" + WiFi.localIP().toString());
-
+  Serial.println("IP:" + ip.toString());
   displayMessage(3);
+  displayIp(ip);
+
 
   configTime(timezone, ntpServer);
   ArduinoOTA.setHostname(hostname);
@@ -77,8 +76,7 @@ void setup()
                        }
                        // NOTE: if updating FS this would be the place to unmount FS using FS.end()
                        Serial.println("OTA start " + type);
-                       displayMessage(2);
-                     });
+                       displayMessage(2); });
 
   ArduinoOTA.onEnd([]()
                    { Serial.println("OTA done"); });
@@ -108,12 +106,12 @@ void setup()
                        else if (error == OTA_END_ERROR)
                        {
                          Serial.println("End Failed");
-                       }
-                     });
+                       } });
 
   ArduinoOTA.begin();
 
   Cron.create(clockUpdateSchedule, displayTime, false);
+
 
   if (owmTempEnabled == 1)
   {
@@ -123,9 +121,15 @@ void setup()
       getWeather();
     }
     Cron.create(owmUpdateSchedule, getWeather, false);
-    Cron.create(owmTempSchedule, displayTemperature, false);
+    Cron.create(owmTempSchedule, displayWeather, false);
+  }
+
+  if (ntcTempEnabled == 1)
+  {
+    Cron.create(ntcTempSchedule, displayNtcTemperature, false);
   }
 }
+
 
 void loop()
 {

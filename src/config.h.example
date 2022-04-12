@@ -3,9 +3,6 @@
 /************************/
 
 // WIFI
-
-const char *ssid = "ssid";
-const char *password = "pass";
 const char *hostname = "clock-small.lan";
 
 //// Clock
@@ -33,6 +30,20 @@ String owmLocation = "<Your city,Country code>";                    // The locat
 String owmUnits = "metric";                            // "metric" or "imperial" | If switched to imperial, also chnage the owmTempMin/Max values below in the advanced section (values are limited to two digits, so f.ex. 99°F (~ 37°C) is the maximum possible to show
 // OWM Temperature (EXPERIMENTAL)
 
+/// HAS NTC 10K connected
+uint8_t ntcTempEnabled = 0;                 // Show room temperature | 0 => No, 1 => Yes
+#define ntcResistanceNominal 10000 // resistance at 25 degrees C in ohms
+#define ntcTempNominal 25          // temp. for nominal resistance (almost always 25 C)
+#define ntcBCoefficient 3950       // The beta coefficient of the thermistor (usually 3000-4000)
+#define ntcSeriesResistor 10000    // the value of the 'other' resistor
+#define ntcPin A0
+const uint8_t ntcAveragedReadingsCount = 5; // how many samples to take and average, more takes longer, but is more 'smooth'
+int8_t ntcTempMin = -5;                     // Min temperature (-99 is min possibl. Value and lower temperature will be shown in blue and fades torwards red if warmer)
+int8_t ntcTempMax = 30;
+String ntcUnits = "metric";
+uint8_t ntcTempDisplayTime = 5; // Show temperature for n seconds
+float ntcTempCompensation = -2; // readings might be off a little
+char *ntcTempSchedule = "35 * * * * *"; // When should the temperature be shown in "extended" cron format (see below)
 
 //// FastLED
 uint8_t ledBrightness = 130; // Maximum brightness (0-255)
