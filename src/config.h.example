@@ -18,7 +18,7 @@ const uint8_t totalCharacters = 4;                 // w/o the colons
 const uint8_t segmentsPerCharacter = 7;
 const uint8_t NUM_LEDS = (ledsPerSegment * segmentsPerCharacter * totalCharacters  ) + 2;
 
-char *timezone="CET-1CEST,M3.5.0,M10.5.0/3";
+char *timezone="CET-1CEST,M3.5.0,M10.5.0/3"; //can be obtained using https://rainmaker.espressif.com/docs/time-service.html
 
 uint8_t owmTempEnabled = 1;     // Show temperature | 0 => No, 1 => Yes
 uint8_t owmTempDisplayTime = 5; // Show temperature for n seconds
@@ -59,6 +59,7 @@ char *owmTempSchedule = "30 * * * * *"; // When should the temperature be shown 
 
 //// FastLED
 #define LED_PIN D3 // LED data pin to use on ESP
+#define LED_TYPE WS2812
 
 //// Schedules
 // The schedules use an "extended" cron syntax with an addiational seconds field
