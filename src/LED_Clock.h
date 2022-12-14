@@ -431,7 +431,16 @@ void displayTemperature(int temperature, int minTemp, int maxTemp, String units,
     int tempNibble10 = temperature / 10;
     int tempNibble = temperature % 10;
     char unit = internal == 1 ? 'x' : 'z';
-    sprintf(displayWord, "%d%d%c%c", tempNibble10, tempNibble, unit, (units == "metric" ? 'C' : 'F'));
+    if(negative) {
+        if (temperature <= -10) {
+            sprintf(displayWord, "%c%d", unit, tempNibble);
+        }else {
+            sprintf(displayWord, "%d%c%c", tempNibble, unit, (units == "metric" ? 'C' : 'F'));
+        }
+    } else {
+        sprintf(displayWord, "%d%d%c%c", tempNibble10, tempNibble, unit, (units == "metric" ? 'C' : 'F'));
+    }
+    Serial.println(displayWord);
     display(displayWord, true, RainbowColors_p, customBlendIndex);
     FastLED.show();
     Cron.delay(displayTime * 1000);
@@ -446,6 +455,7 @@ void displayNtcTemperature()
 
 void displayWeather()
 {
+     Serial.println(owmTemperature);
     displayTemperature(owmTemperature, owmTempMin, owmTempMax, owmUnits, owmTempDisplayTime, 0);
 }
 
