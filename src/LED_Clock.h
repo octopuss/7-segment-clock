@@ -433,7 +433,7 @@ void displayTemperature(int temperature, int minTemp, int maxTemp, String units,
     char unit = internal == 1 ? 'x' : 'z';
     if(negative) {
         if (temperature <= -10) {
-            sprintf(displayWord, "%c%d", unit, tempNibble);
+            sprintf(displayWord, "%c%d", unit, temperature);
         }else {
             sprintf(displayWord, "%d%c%c", tempNibble, unit, (units == "metric" ? 'C' : 'F'));
         }
