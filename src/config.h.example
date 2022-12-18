@@ -8,6 +8,7 @@ const char *hostname = "clock-small.lan";
 //// Clock
 uint8_t clockColorMode = 1;                        // 0 => SOLID, 1 => PALETTE, (2 => STATIC_PALETTE - To-Do)
 CRGB clockColorSolid = CRGB::Green;                // SOLID mode only: All available predefined colors: https://github.com/FastLED/FastLED/wiki/Pixel-reference#predefined-colors-list
+CRGB nightClockColorSolid = CRGB::Green;           // SOLID mode color for night mode
 CRGBPalette16 clockColorPalette = RainbowColors_p; // PALETTE mode only: Predefined palette to use (RainbowColors_p, CloudColors_p, LavaColors_p, OceanColors_p, ForestColors_p)
 uint8_t clockColorCharBlend = 5;                   // PALETTE mode only: Blend single characters by amount n (0-255) | 0 => disabled, >0 amount of change
 TBlendType clockColorBlending = LINEARBLEND;       // PALETTE mode only: options are LINEARBLEND or NOBLEND - linear is 'cleaner'
@@ -50,10 +51,11 @@ uint8_t ledBrightness = 130; // Maximum brightness (0-255)
 uint8_t nightLedBrightness = 20;
 uint8_t nightStartHour = 21;
 uint8_t nightEndHour = 7;
+uint8_t nightClockColorMode = 0; // 0 => SOLID, 1 => PALETTE, (2 => STATIC_PALETTE - To-Do)
 
 
 //// Open Weather Map (EXPERIMENTAL)
-int8_t owmTempMin = -10;                // Min temperature (-99 is min possibl. Value and lower temperature will be shown in blue and fades torwards red if warmer)
+int8_t owmTempMin = -15;                // Min temperature (-99 is min possibl. Value and lower temperature will be shown in blue and fades torwards red if warmer)
 int8_t owmTempMax = 44;                 // Max temperature (99 is max possible. Value and higher temperature will be shown in red and fades torwards blue if colder)
 char *owmTempSchedule = "30 * * * * *"; // When should the temperature be shown in "extended" cron format (see below)
 

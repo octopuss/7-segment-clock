@@ -1,7 +1,7 @@
 #include <WifiClient.h>
 #include "FastLED_RGBW.h"
-//#include <OneWire.h>
-//#include <DS18B20.h>
+// #include <OneWire.h>
+// #include <DS18B20.h>
 
 // FastLED
 #define COLOR_ORDER GRB
@@ -15,6 +15,7 @@ uint8_t colorIndex = 0;
 uint8_t charBlendIndex;
 uint8_t darkBrightness = 0;
 uint8_t currentBrightness = ledBrightness;
+bool isNightMode = false;
 const uint8_t chars = 32;
 
 // Open Weather Map
@@ -28,8 +29,8 @@ bool clockDisplayPaused = false;
 char displayWord[5];
 struct tm timeinfo;
 
-//OneWire oneWire(D2);
-//DS18B20 sensor(&oneWire);
+// OneWire oneWire(D2);
+// DS18B20 sensor(&oneWire);
 
 bool getLocalTime(struct tm *info, uint32_t ms = 5000)
 {
@@ -188,6 +189,7 @@ void toggleSecondIndicator()
     uint8_t colorCorrection = 0;
     CRGB tmpColor;
     CRGB tmpDarkColor;
+    uint8_t colorMode = isNightMode ? nightClockColorMode : clockColorMode;
 
     darkBrightness = currentBrightness - clockSecIndicatorDiff;
     if (darkBrightness > currentBrightness)
@@ -195,15 +197,16 @@ void toggleSecondIndicator()
         darkBrightness = 0;
     }
 
-    if (clockColorMode == 0)
+    if (colorMode == 0)
     { // SOLID
-        tmpColor = clockColorSolid;
-        tmpDarkColor = clockColorSolid;
+        tmpColor = isNightMode ? nightClockColorSolid : clockColorSolid;
+        tmpColor.fadeToBlackBy(255 - currentBrightness);
+        tmpDarkColor = tmpColor;
         CHSV tempColorHsv = rgb2hsv_approximate(tmpColor);
         tempColorHsv.v = darkBrightness;
         hsv2rgb_rainbow(tempColorHsv, tmpDarkColor);
     }
-    else if (clockColorMode == 1)
+    else if (colorMode == 1)
     { // PALETTE
         // Correct the color to match blend (a bit of a hack...)
         colorCorrection = 2 * clockColorCharBlend;
@@ -236,7 +239,7 @@ void displayCharacter(uint8_t charNum, uint8_t position, bool customize, CRGBPal
     }
 
     uint8_t offset = position * segmentsPerCharacter * ledsPerSegment;
-
+    uint8_t colorMode = isNightMode ? nightClockColorMode : clockColorMode;
     for (int i = 0; i < segmentsPerCharacter; i++)
     {
         if (customize)
@@ -245,9 +248,10 @@ void displayCharacter(uint8_t charNum, uint8_t position, bool customize, CRGBPal
         }
         else
         {
-            if (clockColorMode == 0)
+            if (colorMode == 0)
             { // SOLID
-                currentColor = clockColorSolid;
+                currentColor = isNightMode ? nightClockColorSolid : clockColorSolid;
+                currentColor.fadeToBlackBy(255 - currentBrightness);
             }
             else if (clockColorMode == 1)
             { // PALETTE
@@ -302,14 +306,17 @@ void displayTime()
 
     if (timeinfo.tm_hour < nightStartHour && timeinfo.tm_hour >= nightEndHour)
     {
+        isNightMode = false;
         currentBrightness = ledBrightness;
     }
     else
     {
+        isNightMode = true;
         currentBrightness = nightLedBrightness;
     }
 
-    currentColor = ColorFromPalette(currentPalette, colorIndex, currentBrightness, currentBlending);
+    uint8_t colorMode = isNightMode ? nightClockColorMode : clockColorMode;
+    currentColor = ColorFromPalette(currentPalette, colorIndex, isNightMode ? nightLedBrightness : ledBrightness, currentBlending);
 
     // Split time into single digits
     int hourNibble10 = timeinfo.tm_hour / 10;
@@ -319,7 +326,6 @@ void displayTime()
 
     if (hourNibble10 == 0)
     {
-        Serial.println("tady");
         sprintf(displayWord, "%d%d%d", hourNibble, minNibble10, minNibble);
         Serial.println(displayWord);
     }
@@ -332,13 +338,11 @@ void displayTime()
 
     FastLED.show();
 
-    if (clockColorMode == 1)
+    if (colorMode == 1)
     {
         colorIndex++;
     }
 }
-
-
 
 /* float readDSTemperature()
 {
@@ -431,13 +435,19 @@ void displayTemperature(int temperature, int minTemp, int maxTemp, String units,
     int tempNibble10 = temperature / 10;
     int tempNibble = temperature % 10;
     char unit = internal == 1 ? 'x' : 'z';
-    if(negative) {
-        if (temperature <= -10) {
+    if (negative)
+    {
+        if (temperature <= -10)
+        {
             sprintf(displayWord, "%c%d", unit, temperature);
-        }else {
+        }
+        else
+        {
             sprintf(displayWord, "%d%c%c", tempNibble, unit, (units == "metric" ? 'C' : 'F'));
         }
-    } else {
+    }
+    else
+    {
         sprintf(displayWord, "%d%d%c%c", tempNibble10, tempNibble, unit, (units == "metric" ? 'C' : 'F'));
     }
     Serial.println(displayWord);
@@ -455,7 +465,7 @@ void displayNtcTemperature()
 
 void displayWeather()
 {
-     Serial.println(owmTemperature);
+    Serial.println(owmTemperature);
     displayTemperature(owmTemperature, owmTempMin, owmTempMax, owmUnits, owmTempDisplayTime, 0);
 }
 
